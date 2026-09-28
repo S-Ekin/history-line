@@ -1,0 +1,74 @@
+:root {
+  color-scheme: light;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: 'Noto Serif SC', 'Songti SC', 'SimSun', Georgia, serif;
+  color: #3a3128;
+  background: #f5efe2;
+  overflow: hidden;
+}
+
+/* 宣纸纹理背景 */
+.paper-texture {
+  background-color: #f5efe2;
+  background-image:
+    radial-gradient(rgba(156, 107, 60, 0.06) 1px, transparent 1px),
+    radial-gradient(rgba(156, 107, 60, 0.04) 1px, transparent 1px);
+  background-size: 22px 22px, 38px 38px;
+  background-position: 0 0, 11px 19px;
+}
+
+/* 时间轴滚动条 */
+.tl-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #9c6b3c transparent;
+}
+.tl-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+.tl-scroll::-webkit-scrollbar-thumb {
+  background: rgba(156, 107, 60, 0.45);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+.tl-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* 节点进入动画 */
+@keyframes node-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.node-in {
+  animation: node-in 0.28s ease both;
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.panel-in {
+  animation: panel-in 0.22s ease both;
+}
