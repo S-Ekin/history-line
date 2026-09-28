@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useTimelineStore } from '@/stores/timeline'
-import { curvePath, formatYear, parallelEvents, yearToY } from '@/utils/timeline'
+import {
+  CARD_H,
+  CARD_W,
+  curvePath,
+  formatYear,
+  layoutNodes,
+  parallelEvents,
+} from '@/utils/timeline'
 
 const store = useTimelineStore()
 
@@ -9,22 +16,46 @@ const PANEL_W = 386
 
 const item = computed(() => store.selected)
 
-/** 节点圆点在视口中的位置 */
-const anchor = computed(() => ({
-  x: store.centerX,
-  y: item.value ? yearToY(item.value.year, store.pxPerYear) - store.scrollTop : 0,
-}))
+/** 选中节点的布局结果（含泳道 x） */
+const laidNode = computed(() => {
+  if (!item.value) return null
+  return layoutNodes(store.filteredItems, store.pxPerYear).find(
+    (n) => n.item.id === item.value!.id,
+  )
+})
 
-/** 面板侧的曲线终点 */
+/**
+ * 事件节点侧的曲线端点：
+ * 取卡片左右两条竖边中离面板较近的一条，纵向在卡片中部，
+ * 保证连线一头确实连在分集卡片上。
+ */
+const nodeAnchor = computed(() => {
+  if (!laidNode.value) return { x: store.centerX, y: 0 }
+  const cardLeft = store.centerX + laidNode.value.x
+  const cardRight = cardLeft + CARD_W
+  const y = laidNode.value.y - store.scrollTop + CARD_H / 2
+  const panelCenterX = store.panelPos.x + PANEL_W / 2
+  return Math.abs(cardLeft - panelCenterX) < Math.abs(cardRight - panelCenterX)
+    ? { x: cardLeft, y }
+    : { x: cardRight, y }
+})
+
+/**
+ * 面板侧的曲线终点：
+ * 取面板左右两条竖边中离节点较近的一条，纵向在标题栏中部，
+ * 保证连线另一头确实连在模态框上。
+ */
 const panelAnchor = computed(() => {
-  if (!item.value) return { x: 0, y: 0 }
-  return item.value.type === 'china'
-    ? { x: store.panelPos.x, y: store.panelPos.y + 36 }
-    : { x: store.panelPos.x + PANEL_W, y: store.panelPos.y + 36 }
+  const y = store.panelPos.y + 36
+  const left = { x: store.panelPos.x, y }
+  const right = { x: store.panelPos.x + PANEL_W, y }
+  return Math.abs(left.x - nodeAnchor.value.x) <= Math.abs(right.x - nodeAnchor.value.x)
+    ? left
+    : right
 })
 
 const path = computed(() =>
-  curvePath(anchor.value.x, anchor.value.y, panelAnchor.value.x, panelAnchor.value.y),
+  curvePath(nodeAnchor.value.x, nodeAnchor.value.y, panelAnchor.value.x, panelAnchor.value.y),
 )
 
 const parallels = computed(() =>
@@ -48,6 +79,8 @@ let offsetX = 0
 let offsetY = 0
 
 function onPointerDown(e: PointerEvent) {
+  // 点击关闭按钮等交互元素时不启动拖动，保证其 click 正常触发
+  if ((e.target as HTMLElement).closest('button')) return
   dragging = true
   const target = e.currentTarget as HTMLElement
   target.setPointerCapture(e.pointerId)
