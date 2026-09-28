@@ -1,9 +1,5 @@
 import type { HistoryItem, LaidOutNode, Tick } from '@/types/history'
 
-/** 时间轴覆盖的年份范围（含史前旧石器时代） */
-export const MIN_YEAR = -300000
-export const MAX_YEAR = 2000
-
 /** 缩放范围：每年对应的像素高度 */
 export const MIN_PX_PER_YEAR = 0.02
 export const MAX_PX_PER_YEAR = 30
@@ -16,27 +12,8 @@ export const CARD_GAP_Y = 12
 /** 节点与主轴之间的水平间隙（轴线到卡片锚点） */
 export const AXIS_GAP = 26
 
-/**
- * 年份 -> 纵向像素坐标
- * 注意：不存在「公元0年」，公元前1年的下一年即公元1年。
- */
-export function yearToY(year: number, pxPerYear: number): number {
-  const continuous = year <= 0 ? year + 1 : year
-  const minContinuous = MIN_YEAR + 1
-  return (continuous - minContinuous) * pxPerYear
-}
-
-/** 纵向像素坐标 -> 年份 */
-export function yToYear(y: number, pxPerYear: number): number {
-  const minContinuous = MIN_YEAR + 1
-  const continuous = Math.round(minContinuous + y / pxPerYear)
-  return continuous <= 0 ? continuous - 1 : continuous
-}
-
-/** 时间轴内容总高度 */
-export function totalHeight(pxPerYear: number): number {
-  return yearToY(MAX_YEAR, pxPerYear)
-}
+/** 没有任何事件的空白区间，在轴上占用的最大像素长度（压缩显示） */
+export const EMPTY_CAP = 64
 
 /** 年份格式化：BC 公元前 / AD 公元后 */
 export function formatYear(year: number): string {
@@ -52,46 +29,93 @@ export function shortYear(year: number): string {
   return `${year}`
 }
 
-/** 自适应刻度间隔（年），保证主刻度间距约 90~180px */
-const NICE_STEPS = [
-  1, 2, 5, 10, 20, 50, 100, 200, 250, 500, 1000, 2000, 2500, 5000, 10000, 20000, 25000, 50000,
-  100000,
-]
+/** 空白压缩区间 */
+export interface Gap {
+  /** 区间起止年份（from < to） */
+  from: number
+  to: number
+  /** 区间在内容中的纵向坐标（y0 上，y1 下） */
+  y0: number
+  y1: number
+  /** 是否被压缩（原始长度超过 EMPTY_CAP） */
+  compressed: boolean
+}
 
-export function pickStep(pxPerYear: number): number {
-  const target = 110 / pxPerYear
-  for (const step of NICE_STEPS) {
-    if (step >= target) return step
-  }
-  return NICE_STEPS[NICE_STEPS.length - 1]
+/** 事件年份刻度标记 */
+export interface YearMark {
+  year: number
+  y: number
 }
 
 /**
- * 生成可视区内的刻度
- * @param y0 可视区顶部内容坐标
- * @param y1 可视区底部内容坐标
+ * 非线性时间比例尺：
+ * - 有事件的年份按 pxPerYear 正常展开；
+ * - 两个相邻事件年份之间若没有任何事件且间隔过大，
+ *   压缩为最多 EMPTY_CAP 的一小段（区间内部线性映射）。
  */
-export function buildTicks(y0: number, y1: number, pxPerYear: number): Tick[] {
-  const step = pickStep(pxPerYear)
-  const yearStart = yToYear(y0, pxPerYear)
-  const yearEnd = yToYear(y1, pxPerYear)
-  const ticks: Tick[] = []
-  const first = Math.ceil((yearStart - 1) / step) * step
-  for (let year = first; year <= yearEnd; year += step) {
-    ticks.push({ year, y: yearToY(year, pxPerYear), major: true })
+export interface ScaleModel {
+  yearToY: (year: number) => number
+  totalH: number
+  gaps: Gap[]
+  marks: YearMark[]
+}
+
+export function createScale(items: HistoryItem[], pxPerYear: number): ScaleModel {
+  const years = [...new Set(items.map((i) => i.year))].sort((a, b) => a - b)
+
+  const marks: YearMark[] = []
+  const gaps: Gap[] = []
+  let cursor = 0
+
+  years.forEach((year, idx) => {
+    if (idx === 0) {
+      marks.push({ year, y: 0 })
+      return
+    }
+    const prev = years[idx - 1]
+    const delta = year - prev
+    const natural = delta * pxPerYear
+    const size = Math.min(natural, EMPTY_CAP)
+    const y0 = cursor
+    cursor += size
+    gaps.push({ from: prev, to: year, y0, y1: cursor, compressed: natural > EMPTY_CAP })
+    marks.push({ year, y: cursor })
+  })
+
+  const posOf = (year: number): number => {
+    if (years.length === 0) return 0
+    if (year <= years[0]) return marks[0].y
+    if (year >= years[years.length - 1]) return marks[marks.length - 1].y
+    // 定位所在区间并线性插值
+    let lo = 0
+    let hi = marks.length - 1
+    while (lo < hi - 1) {
+      const mid = (lo + hi) >> 1
+      if (years[mid] <= year) lo = mid
+      else hi = mid
+    }
+    const g = gaps[lo]
+    const span = g.to - g.from
+    const ratio = (year - g.from) / span
+    return g.y0 + ratio * (g.y1 - g.y0)
   }
-  return ticks
+
+  return { yearToY: posOf, totalH: cursor + 160, gaps, marks }
+}
+
+/** 年份区间文案，如「公元200 — 公元500」 */
+export function formatRange(from: number, to: number): string {
+  const f = from < 0 ? `公元前${-from}` : `公元${from}`
+  const t = to < 0 ? `公元前${-to}` : `公元${to}`
+  return `${f} — ${t}`
 }
 
 /**
  * 节点布局（双侧独立的碰撞检测泳道算法）：
- * 1. 节点先按年份换算纵向坐标；
- * 2. 同一侧内，若与已有泳道中的节点纵向冲突（卡片会重叠），
- *    则分配到更远的横向泳道，保证任何缩放下节点都不互相遮挡；
- * 3. 同年节点自然落入不同泳道，实现横向并列；
- * 4. 中国线在主轴左侧，世界线在右侧。
+ * 同一侧内纵向冲突的节点自动分配到更远的横向泳道，保证任何缩放下不遮挡；
+ * 中国线在主轴左侧，世界线在右侧。
  */
-export function layoutNodes(items: HistoryItem[], pxPerYear: number): LaidOutNode[] {
+export function layoutNodes(items: HistoryItem[], scale: ScaleModel): LaidOutNode[] {
   const sides: Record<'china' | 'world', HistoryItem[]> = { china: [], world: [] }
   for (const item of items) sides[item.type].push(item)
 
@@ -100,7 +124,7 @@ export function layoutNodes(items: HistoryItem[], pxPerYear: number): LaidOutNod
 
   for (const type of ['china', 'world'] as const) {
     const list = sides[type]
-      .map((item) => ({ item, y: yearToY(item.year, pxPerYear) }))
+      .map((item) => ({ item, y: scale.yearToY(item.year) }))
       .sort((a, b) => a.y - b.y || a.item.episode - b.item.episode)
 
     /** 每条泳道最后一个节点占据的底部 y */
@@ -158,3 +182,6 @@ export function curvePath(x1: number, y1: number, x2: number, y2: number): strin
     x2 + (x2 > x1 ? -dx : dx)
   } ${y2}, ${x2} ${y2}`
 }
+
+/** 兼容类型引用（Tick 仍用于事件年份刻度渲染） */
+export type { Tick }

@@ -3,12 +3,10 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useTimelineStore } from '@/stores/timeline'
 import TimelineNode from './TimelineNode.vue'
 import {
-  AXIS_GAP,
-  buildTicks,
+  createScale,
+  formatRange,
   layoutNodes,
-  totalHeight,
   visibleNodes,
-  yearToY,
 } from '@/utils/timeline'
 
 const store = useTimelineStore()
@@ -19,20 +17,30 @@ const viewportW = ref(window.innerWidth)
 const top = ref(0)
 let raf = 0
 
-/** 全部节点布局（随缩放/过滤重算） */
-const allNodes = computed(() => layoutNodes(store.filteredItems, store.pxPerYear))
+/** 非线性比例尺（空白区间压缩） */
+const scale = computed(() => createScale(store.filteredItems, store.pxPerYear))
+
+/** 全部节点布局 */
+const allNodes = computed(() => layoutNodes(store.filteredItems, scale.value))
 
 /** 虚拟滚动：仅渲染可视区节点 */
 const nodes = computed(() =>
   visibleNodes(allNodes.value, top.value, top.value + viewportH.value + 80),
 )
 
-/** 可视区刻度 */
-const ticks = computed(() =>
-  buildTicks(top.value - 60, top.value + viewportH.value + 60, store.pxPerYear),
+/** 可视区内的事件年份刻度 */
+const marks = computed(() =>
+  scale.value.marks.filter((m) => m.y >= top.value - 80 && m.y <= top.value + viewportH.value + 80),
 )
 
-const contentH = computed(() => totalHeight(store.pxPerYear))
+/** 可视区内的空白压缩区间 */
+const gaps = computed(() =>
+  scale.value.gaps.filter(
+    (g) => g.compressed && g.y1 >= top.value - 80 && g.y0 <= top.value + viewportH.value + 80,
+  ),
+)
+
+const contentH = computed(() => scale.value.totalH)
 const centerX = computed(() => viewportW.value / 2)
 
 function syncViewport() {
@@ -59,34 +67,36 @@ function onWheel(e: WheelEvent) {
   e.preventDefault()
   const el = scrollEl.value!
   const oldPx = store.pxPerYear
-  const yearAtCursor = top.value + e.offsetY
+  const cursorY = e.offsetY
+  const oldScale = scale.value
+  // 记录鼠标位置对应的年份
+  let anchorYear = oldScale.marks[0]?.year ?? 0
+  const gs = oldScale.gaps
+  for (const g of gs) {
+    const sy = top.value + cursorY
+    if (sy >= g.y0 && sy <= g.y1) {
+      const ratio = (sy - g.y0) / (g.y1 - g.y0 || 1)
+      anchorYear = Math.round(g.from + ratio * (g.to - g.from))
+      break
+    }
+  }
   store.zoom(e.deltaY < 0 ? 1.15 : 1 / 1.15)
   if (oldPx !== store.pxPerYear) {
     nextTick(() => {
-      const ratio = store.pxPerYear / oldPx
-      el.scrollTop = yearAtCursor * ratio - e.offsetY
+      const ns = scale.value
+      el.scrollTop = ns.yearToY(anchorYear) - cursorY
       syncViewport()
     })
   }
 }
 
-/** 跳转到指定年份 */
-function jumpToYear(year: number) {
-  if (!scrollEl.value) return
-  const y = yearToY(year, store.pxPerYear) - viewportH.value / 2
-  scrollEl.value.scrollTo({ top: Math.max(0, y), behavior: 'smooth' })
-}
-
-defineExpose({ jumpToYear })
-
 onMounted(() => {
   window.addEventListener('resize', onResize)
   if ('scrollRestoration' in history) history.scrollRestoration = 'manual'
   // 初始定位到文明早期（公元前 3500 年附近）
-  // 延迟到浏览器 load 阶段的滚动恢复之后执行，避免被重置
   setTimeout(() => {
     if (scrollEl.value) {
-      scrollEl.value.scrollTop = yearToY(-3500, store.pxPerYear) - viewportH.value / 3
+      scrollEl.value.scrollTop = scale.value.yearToY(-3500) - viewportH.value / 3
       syncViewport()
     }
   }, 350)
@@ -107,36 +117,51 @@ onBeforeUnmount(() => {
   >
     <!-- 虚拟滚动占位：撑开完整时间轴高度 -->
     <div class="relative w-full" :style="{ height: `${contentH}px` }">
-      <!-- 主时间轴线 -->
+      <!-- 主时间轴线（加粗） -->
       <div
-        class="absolute top-0 bottom-0 w-2px bg-gradient-to-b from-transparent via-bronze to-transparent"
-        :style="{ left: `${centerX}px` }"
+        class="absolute top-0 bottom-0 w-6px rounded-full bg-gradient-to-b from-transparent via-bronze-deep to-transparent"
+        :style="{ left: `${centerX - 3}px` }"
       />
 
-      <!-- 年份刻度 -->
-      <template v-for="tick in ticks" :key="tick.year">
+      <!-- 事件年份刻度 -->
+      <template v-for="mark in marks" :key="mark.year">
         <div
-          class="absolute h-10px w-2px bg-bronze/50"
-          :style="{ top: `${tick.y}px`, left: `${centerX - 1}px` }"
+          class="absolute h-12px w-12px rounded-full bg-gold border-2 border-bronze-deep"
+          :style="{ top: `${mark.y - 4}px`, left: `${centerX - 6}px` }"
         />
         <div
-          class="absolute whitespace-nowrap text-12px leading-10px text-ink-light select-none"
-          :style="{ top: `${tick.y - 8}px`, left: `${centerX + 10}px` }"
+          class="absolute whitespace-nowrap text-11px leading-12px text-ink-light select-none"
+          :style="{ top: `${mark.y - 6}px`, left: `${centerX + 14}px` }"
         >
-          {{ tick.year < 0 ? `BC 前${-tick.year}` : `AD ${tick.year}` }}
+          {{ mark.year < 0 ? `BC 前${-mark.year}` : `AD ${mark.year}` }}
         </div>
         <div
-          class="absolute whitespace-nowrap text-12px leading-10px text-ink-light select-none text-right"
-          :style="{ top: `${tick.y - 8}px`, width: `${centerX - AXIS_GAP - 10}px`, left: '8px' }"
+          class="absolute whitespace-nowrap text-11px leading-12px text-ink-light select-none text-right"
+          :style="{ top: `${mark.y - 6}px`, width: `${centerX - 26 - 12}px`, left: '8px' }"
         >
-          {{ tick.year < 0 ? `公元前${-tick.year}年` : `公元${tick.year}年` }}
+          {{ mark.year < 0 ? `公元前${-mark.year}年` : `公元${mark.year}年` }}
+        </div>
+      </template>
+
+      <!-- 空白压缩区间：一小段 + 区间文案 -->
+      <template v-for="g in gaps" :key="`gap-${g.from}-${g.to}`">
+        <div
+          class="absolute z-1 flex items-center justify-center"
+          :style="{ top: `${g.y0}px`, height: `${g.y1 - g.y0}px`, left: `${centerX - 95}px`, width: '190px' }"
+        >
+          <span
+            class="block whitespace-nowrap text-9px leading-none text-center text-bronze-deep bg-paper/95 border border-bronze/40 rounded px-8px py-4px"
+          >
+            {{ formatRange(g.from, g.to) }}
+          </span>
         </div>
       </template>
 
       <!-- 公元元年纪元分界标记 -->
       <div
+        v-if="scale.marks.some((m) => m.year >= 1)"
         class="absolute z-1 flex items-center"
-        :style="{ top: `${yearToY(1, store.pxPerYear) - 11}px`, left: `${centerX - 60}px` }"
+        :style="{ top: `${scale.yearToY(1) - 12}px`, left: `${centerX - 60}px` }"
       >
         <span
           class="w-120px text-center text-11px tracking-3px text-bronze-deep border-y border-bronze/50 py-2px bg-paper/80"

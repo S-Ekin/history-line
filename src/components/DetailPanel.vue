@@ -2,11 +2,9 @@
 import { computed } from 'vue'
 import { useTimelineStore } from '@/stores/timeline'
 import {
-  CARD_H,
-  CARD_W,
+  createScale,
   curvePath,
   formatYear,
-  layoutNodes,
   parallelEvents,
 } from '@/utils/timeline'
 
@@ -16,34 +14,19 @@ const PANEL_W = 386
 
 const item = computed(() => store.selected)
 
-/** 选中节点的布局结果（含泳道 x） */
-const laidNode = computed(() => {
-  if (!item.value) return null
-  return layoutNodes(store.filteredItems, store.pxPerYear).find(
-    (n) => n.item.id === item.value!.id,
-  )
-})
+/** 与画布一致的比例尺 */
+const scale = computed(() => createScale(store.filteredItems, store.pxPerYear))
 
 /**
- * 事件节点侧的曲线端点：
- * 取卡片左右两条竖边中离面板较近的一条，纵向在卡片中部，
- * 保证连线一头确实连在分集卡片上。
+ * 事件节点侧端点：主轴上的节点圆点（世界轴节点）
  */
-const nodeAnchor = computed(() => {
-  if (!laidNode.value) return { x: store.centerX, y: 0 }
-  const cardLeft = store.centerX + laidNode.value.x
-  const cardRight = cardLeft + CARD_W
-  const y = laidNode.value.y - store.scrollTop + CARD_H / 2
-  const panelCenterX = store.panelPos.x + PANEL_W / 2
-  return Math.abs(cardLeft - panelCenterX) < Math.abs(cardRight - panelCenterX)
-    ? { x: cardLeft, y }
-    : { x: cardRight, y }
-})
+const nodeAnchor = computed(() => ({
+  x: store.centerX,
+  y: item.value ? scale.value.yearToY(item.value.year) - store.scrollTop + 32 : 0,
+}))
 
 /**
- * 面板侧的曲线终点：
- * 取面板左右两条竖边中离节点较近的一条，纵向在标题栏中部，
- * 保证连线另一头确实连在模态框上。
+ * 面板侧端点：面板左右竖边中离节点较近的一条，标题栏高度
  */
 const panelAnchor = computed(() => {
   const y = store.panelPos.y + 36
@@ -79,7 +62,7 @@ let offsetX = 0
 let offsetY = 0
 
 function onPointerDown(e: PointerEvent) {
-  // 点击关闭按钮等交互元素时不启动拖动，保证其 click 正常触发
+  // 点击按钮时不启动拖动，保证 click 正常触发
   if ((e.target as HTMLElement).closest('button')) return
   dragging = true
   const target = e.currentTarget as HTMLElement
@@ -103,21 +86,36 @@ function onPointerUp(e: PointerEvent) {
 
 <template>
   <template v-if="item">
-    <!-- 曲线连接层（视口固定） -->
+    <!-- 曲线连接层（位于面板之下） -->
     <svg class="fixed inset-0 z-40 w-full h-full pointer-events-none">
       <path
         :d="path"
         fill="none"
         :stroke="item.type === 'china' ? '#b3402f' : '#4a6b52'"
-        stroke-width="2"
+        stroke-width="2.5"
         stroke-dasharray="6 4"
-        opacity="0.75"
+        opacity="0.8"
       />
+      <!-- 节点侧端点 -->
+      <circle
+        :cx="nodeAnchor.x"
+        :cy="nodeAnchor.y"
+        r="5"
+        :fill="item.type === 'china' ? '#b3402f' : '#4a6b52'"
+        stroke="#f5efe2"
+        stroke-width="2"
+      />
+    </svg>
+
+    <!-- 面板侧端点：层级高于面板，保证完整显示 -->
+    <svg class="fixed inset-0 z-[60] w-full h-full pointer-events-none">
       <circle
         :cx="panelAnchor.x"
         :cy="panelAnchor.y"
-        r="4"
+        r="5.5"
         :fill="item.type === 'china' ? '#b3402f' : '#4a6b52'"
+        stroke="#f5efe2"
+        stroke-width="2"
       />
     </svg>
 
