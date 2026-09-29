@@ -6,14 +6,24 @@ import { useTimelineStore } from '@/stores/timeline'
 const props = defineProps<{
   node: LaidOutNode
   centerX: number
+  /** 节点透明度（随年份渐变） */
+  opacity: number
 }>()
 
 const store = useTimelineStore()
+
+const isActive = computed(() => store.selected?.id === props.node.item.id)
+
+/** 选中态时提升透明度下限，保证金色高亮清晰可见 */
+const effectiveOpacity = computed(() =>
+  isActive.value ? Math.max(props.opacity, 0.85) : props.opacity,
+)
 
 const style = computed(() => ({
   top: `${props.node.y}px`,
   left: `${props.centerX + props.node.x}px`,
   width: '218px',
+  opacity: effectiveOpacity.value,
 }))
 
 /** 节点到主轴的连接线 */
@@ -31,8 +41,6 @@ const dotStyle = computed(() => ({
   left: `${props.centerX - 7}px`,
 }))
 
-const isActive = computed(() => store.selected?.id === props.node.item.id)
-
 function onClick() {
   store.select(props.node.item)
 }
@@ -43,16 +51,16 @@ function onClick() {
   <div
     class="absolute h-2px pointer-events-none"
     :class="node.item.type === 'china' ? 'bg-china/40' : 'bg-world/40'"
-    :style="stubStyle"
+    :style="{ ...stubStyle, opacity: effectiveOpacity }"
   />
   <!-- 主轴上的节点圆点 -->
   <div
     class="absolute z-2 h-14px w-14px rounded-full border-2 border-paper pointer-events-auto cursor-pointer transition-transform duration-150 hover:scale-130"
     :class="[node.item.type === 'china' ? 'bg-china' : 'bg-world', isActive ? 'scale-140 ring-2 ring-gold' : '']"
-    :style="dotStyle"
+    :style="{ ...dotStyle, opacity: effectiveOpacity }"
     @click="onClick"
   />
-  <!-- 分集卡片 -->
+  <!-- 分集卡片（内容文字保持不透明） -->
   <button
     type="button"
     class="card-base node-in absolute z-3 h-64px px-10px py-6px text-left cursor-pointer hover:-translate-y-2px hover:border-bronze hover:shadow-md"

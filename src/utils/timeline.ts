@@ -10,7 +10,7 @@ export const CARD_H = 64
 export const CARD_GAP_X = 14
 export const CARD_GAP_Y = 12
 /** 节点与主轴之间的水平间隙（轴线到卡片锚点） */
-export const AXIS_GAP = 26
+export const AXIS_GAP = 50
 
 /** 没有任何事件的空白区间，在轴上占用的最大像素长度（压缩显示） */
 export const EMPTY_CAP = 64
@@ -188,6 +188,36 @@ export function parallelEvents(
   return items
     .filter((i) => i.id !== target.id && Math.abs(i.year - target.year) <= within)
     .sort((a, b) => Math.abs(a.year - target.year) - Math.abs(b.year - target.year))
+}
+
+/**
+ * 根据年份动态计算同期对照跨度
+ * - 公元前越远 → 跨度越大（事件稀少）
+ * - 公元后越近 → 跨度越小（事件密集）
+ */
+export function parallelSpan(year: number): number {
+  if (year < -1000) return 60
+  if (year < 0) return 40
+  if (year < 1500) return 25
+  if (year < 1900) return 15
+  return 10
+}
+
+/**
+ * 计算节点在时间轴上的进度比例
+ * 最早年份→0，最晚年份→1
+ */
+export function yearProgress(year: number, minYear: number, maxYear: number): number {
+  if (maxYear === minYear) return 1
+  return (year - minYear) / (maxYear - minYear)
+}
+
+/**
+ * 根据时间进度计算节点透明度
+ * 越早的节点越淡（不低于 minOpacity），越晚的节点越清晰
+ */
+export function nodeOpacity(progress: number, minOpacity = 0.55): number {
+  return minOpacity + (1 - minOpacity) * Math.min(1, Math.max(0, progress))
 }
 
 /**

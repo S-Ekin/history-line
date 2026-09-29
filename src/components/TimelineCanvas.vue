@@ -3,11 +3,14 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useTimelineStore } from '@/stores/timeline'
 import TimelineNode from './TimelineNode.vue'
 import {
+  AXIS_GAP,
   createScale,
   formatRange,
   layoutNodes,
   visibleNodes,
   CARD_W,
+  yearProgress,
+  nodeOpacity,
 } from '@/utils/timeline'
 
 const store = useTimelineStore()
@@ -42,6 +45,18 @@ const gaps = computed(() =>
 )
 
 const contentH = computed(() => scale.value.totalH)
+
+/** 当前过滤后的年份范围（用于颜色渐变） */
+const yearRange = computed(() => {
+  const years = store.filteredItems.map((i) => i.year)
+  return { min: Math.min(...years), max: Math.max(...years) }
+})
+
+/** 计算节点透明度（越早越淡，最小 0.55） */
+function computeOpacity(year: number): number {
+  const { min, max } = yearRange.value
+  return nodeOpacity(yearProgress(year, min, max))
+}
 
 /** 内容所需的单侧宽度（容纳最远泳道卡片），不足视口时以视口为准 */
 const halfSpan = computed(() => {
@@ -149,15 +164,17 @@ onBeforeUnmount(() => {
           class="absolute h-12px w-12px rounded-full bg-gold border-2 border-bronze-deep"
           :style="{ top: `${mark.y - 4}px`, left: `${centerX - 6}px` }"
         />
+        <!-- 右侧刻度：紧贴主轴右侧 -->
         <div
           class="absolute whitespace-nowrap text-11px leading-12px text-ink-light select-none"
           :style="{ top: `${mark.y - 6}px`, left: `${centerX + 14}px` }"
         >
           {{ mark.year < 0 ? `BC 前${-mark.year}` : `AD ${mark.year}` }}
         </div>
+        <!-- 左侧刻度：移到圆点上方，完全避开卡片主体区域 -->
         <div
           class="absolute whitespace-nowrap text-11px leading-12px text-ink-light select-none text-right"
-          :style="{ top: `${mark.y - 6}px`, width: `${centerX - 26 - 12}px`, left: '8px' }"
+          :style="{ top: `${mark.y - 20}px`, width: `${centerX - AXIS_GAP - 12}px`, left: '8px' }"
         >
           {{ mark.year < 0 ? `公元前${-mark.year}年` : `公元${mark.year}年` }}
         </div>
@@ -196,6 +213,7 @@ onBeforeUnmount(() => {
         :key="node.item.id"
         :node="node"
         :center-x="centerX"
+        :opacity="computeOpacity(node.item.year)"
       />
     </div>
   </div>

@@ -6,11 +6,14 @@ import {
   curvePath,
   formatYear,
   parallelEvents,
+  parallelSpan,
 } from '@/utils/timeline'
 
 const store = useTimelineStore()
 
 const PANEL_W = 386
+/** 滚动容器距离视口顶部的偏移（对应 TimelineCanvas 的 top-56px） */
+const SCROLL_OFFSET_TOP = 56
 
 const item = computed(() => store.selected)
 
@@ -18,12 +21,16 @@ const item = computed(() => store.selected)
 const scale = computed(() => createScale(store.filteredItems, store.pxPerYear))
 
 /**
- * 事件节点侧端点：主轴上的节点圆点（世界轴节点）
+ * 事件节点侧端点：主轴上的节点圆点（视口坐标）
+ * y 转换公式：内容坐标 - scrollTop + 滚动容器 top 偏移 + dot 中心偏移
  */
 const nodeAnchor = computed(() => ({
-  // 内容坐标减去横向滚动量，得到节点圆点的视口坐标
+  // 内容坐标减去横向滚动量，得到主轴的视口 x
   x: store.centerX - store.scrollLeftX,
-  y: item.value ? scale.value.yearToY(item.value.year) - store.scrollTop + 32 : 0,
+  // 内容 y - 纵向滚动 + 滚动容器 top 偏移 + dot 中心（dot top=node.y+25, h-14px, 中心=+32）
+  y: item.value
+    ? scale.value.yearToY(item.value.year) - store.scrollTop + SCROLL_OFFSET_TOP + 32
+    : 0,
 }))
 
 /**
@@ -42,8 +49,11 @@ const path = computed(() =>
   curvePath(nodeAnchor.value.x, nodeAnchor.value.y, panelAnchor.value.x, panelAnchor.value.y),
 )
 
+/** 当前选中事件的同期对照跨度（动态计算） */
+const currentSpan = computed(() => (item.value ? parallelSpan(item.value.year) : 50))
+
 const parallels = computed(() =>
-  item.value ? parallelEvents(store.filteredItems, item.value, 60) : [],
+  item.value ? parallelEvents(store.filteredItems, item.value, currentSpan.value) : [],
 )
 const chinaParallels = computed(() => parallels.value.filter((i) => i.type === 'china'))
 const worldParallels = computed(() => parallels.value.filter((i) => i.type === 'world'))
@@ -168,7 +178,7 @@ function onPointerUp(e: PointerEvent) {
         </ul>
 
         <h3 class="text-13px font-bold text-ink mb-6px">
-          同期对照 <span class="text-11px font-normal text-ink-light">（前后 60 年中外并行事件）</span>
+          同期对照 <span class="text-11px font-normal text-ink-light">（前后 {{ currentSpan }} 年中外并行事件）</span>
         </h3>
         <div class="grid grid-cols-2 gap-8px">
           <div>
