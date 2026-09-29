@@ -192,15 +192,14 @@ export function parallelEvents(
 
 /**
  * 根据年份动态计算同期对照跨度
- * - 公元前越远 → 跨度越大（事件稀少）
- * - 公元后越近 → 跨度越小（事件密集）
+ * 指数衰减公式：以 1900 年 5 年为基准，每往前 500 年跨度 ×2
+ * 远古事件稀少 → 跨度几百年；近代事件密集 → 跨度 5 年
+ * 最小 5 年，最大 5000 年（防止极端远古 span 过大）
  */
 export function parallelSpan(year: number): number {
-  if (year < -1000) return 60
-  if (year < 0) return 40
-  if (year < 1500) return 25
-  if (year < 1900) return 15
-  return 10
+  const yearsBefore1900 = Math.max(0, 1900 - year)
+  const span = 5 * Math.pow(2, yearsBefore1900 / 500)
+  return Math.round(Math.min(5000, Math.max(5, span)))
 }
 
 /**
