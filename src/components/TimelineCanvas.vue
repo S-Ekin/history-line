@@ -169,7 +169,7 @@ onBeforeUnmount(() => {
           class="absolute whitespace-nowrap text-11px leading-12px text-ink-light select-none"
           :style="{ top: `${mark.y - 6}px`, left: `${centerX + 14}px` }"
         >
-          {{ mark.year < 0 ? `BC 前${-mark.year}` : `AD ${mark.year}` }}
+          {{ mark.year < 0 ? `BC ${-mark.year}` : `AD ${mark.year}` }}
         </div>
         <!-- 左侧刻度：移到圆点上方，完全避开卡片主体区域 -->
         <div
@@ -203,7 +203,7 @@ onBeforeUnmount(() => {
         <span
           class="w-120px text-center text-11px tracking-3px text-bronze-deep border-y border-bronze/50 py-2px bg-paper/80"
         >
-          AD 公元纪元
+          公元纪元
         </span>
       </div>
 
