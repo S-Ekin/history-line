@@ -3,7 +3,6 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useTimelineStore } from '@/stores/timeline'
 import TimelineNode from './TimelineNode.vue'
 import {
-  AXIS_GAP,
   createScale,
   formatRange,
   layoutNodes,
@@ -164,19 +163,12 @@ onBeforeUnmount(() => {
           class="absolute h-12px w-12px rounded-full bg-gold border-2 border-bronze-deep"
           :style="{ top: `${mark.y - 4}px`, left: `${centerX - 6}px` }"
         />
-        <!-- 右侧刻度：紧贴主轴右侧 -->
+        <!-- 右侧刻度：单一数据源，避免左右标签混淆 -->
         <div
           class="absolute whitespace-nowrap text-11px leading-12px text-ink-light select-none"
           :style="{ top: `${mark.y - 6}px`, left: `${centerX + 14}px` }"
         >
-          {{ mark.year < 0 ? `BC ${-mark.year}` : `AD ${mark.year}` }}
-        </div>
-        <!-- 左侧刻度：移到圆点上方，完全避开卡片主体区域 -->
-        <div
-          class="absolute whitespace-nowrap text-11px leading-12px text-ink-light select-none text-right"
-          :style="{ top: `${mark.y - 20}px`, width: `${centerX - AXIS_GAP - 12}px`, left: '8px' }"
-        >
-          {{ mark.year < 0 ? `公元前${-mark.year}年` : `公元${mark.year}年` }}
+          {{ mark.year < 0 ? `公元前${-mark.year}` : mark.year === 0 ? `公元元年` : `公元${mark.year}` }}
         </div>
       </template>
 
