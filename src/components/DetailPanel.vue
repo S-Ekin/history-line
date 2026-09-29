@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useTimelineStore } from '@/stores/timeline'
+import { allHistory } from '@/data'
 import {
   createScale,
   curvePath,
@@ -17,8 +18,8 @@ const SCROLL_OFFSET_TOP = 56
 
 const item = computed(() => store.selected)
 
-/** 与画布一致的比例尺 */
-const scale = computed(() => createScale(store.filteredItems, store.pxPerYear))
+/** 与画布一致的比例尺（始终基于全量数据） */
+const scale = computed(() => createScale(allHistory, store.pxPerYear))
 
 /**
  * 事件节点侧端点：主轴上的节点圆点（视口坐标）

@@ -2,6 +2,7 @@
 import { computed, onMounted, onBeforeUnmount, ref } from 'vue'
 import { useTimelineStore } from '@/stores/timeline'
 import type { DisplayMode, HistoryItem } from '@/types/history'
+import { allHistory } from '@/data'
 import { createScale, formatYear } from '@/utils/timeline'
 
 const store = useTimelineStore()
@@ -23,7 +24,7 @@ function jump(item: HistoryItem) {
   store.select(item)
   const el = document.querySelector('.tl-scroll') as HTMLElement | null
   if (el) {
-    const scale = createScale(store.filteredItems, store.pxPerYear)
+    const scale = createScale(allHistory, store.pxPerYear)
     const y = scale.yearToY(item.year) - window.innerHeight / 2
     el.scrollTo({ top: Math.max(0, y), behavior: 'smooth' })
   }
@@ -35,7 +36,7 @@ function jumpRawYear() {
   if (!Number.isFinite(n) || n === 0) return
   const year = kw.startsWith('前') ? -n : n
   const el = document.querySelector('.tl-scroll') as HTMLElement | null
-  const scale = createScale(store.filteredItems, store.pxPerYear)
+  const scale = createScale(allHistory, store.pxPerYear)
   el?.scrollTo({
     top: Math.max(0, scale.yearToY(year) - window.innerHeight / 2),
     behavior: 'smooth',

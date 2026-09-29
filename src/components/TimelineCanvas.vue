@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useTimelineStore } from '@/stores/timeline'
 import TimelineNode from './TimelineNode.vue'
+import { allHistory } from '@/data'
 import {
   createScale,
   formatRange,
@@ -20,10 +21,10 @@ const viewportW = ref(window.innerWidth)
 const top = ref(0)
 let raf = 0
 
-/** 非线性比例尺（空白区间压缩） */
-const scale = computed(() => createScale(store.filteredItems, store.pxPerYear))
+/** 非线性比例尺（始终基于全量数据，保证不同显示模式下刻度一致） */
+const scale = computed(() => createScale(allHistory, store.pxPerYear))
 
-/** 全部节点布局 */
+/** 全部节点布局（按显示模式过滤，但坐标由统一 scale 定位） */
 const allNodes = computed(() => layoutNodes(store.filteredItems, scale.value))
 
 /** 虚拟滚动：仅渲染可视区节点 */
