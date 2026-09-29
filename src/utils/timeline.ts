@@ -14,6 +14,8 @@ export const AXIS_GAP = 26
 
 /** 没有任何事件的空白区间，在轴上占用的最大像素长度（压缩显示） */
 export const EMPTY_CAP = 64
+/** 事件密集区间，相邻事件年份之间的最小纵向行距（保证卡片不重叠） */
+export const DENSE_MIN = 74
 
 /** 年份格式化：BC 公元前 / AD 公元后 */
 export function formatYear(year: number): string {
@@ -39,6 +41,8 @@ export interface Gap {
   y1: number
   /** 是否被压缩（原始长度超过 EMPTY_CAP） */
   compressed: boolean
+  /** 是否被拉开（事件过于密集） */
+  stretched: boolean
 }
 
 /** 事件年份刻度标记 */
@@ -75,10 +79,21 @@ export function createScale(items: HistoryItem[], pxPerYear: number): ScaleModel
     const prev = years[idx - 1]
     const delta = year - prev
     const natural = delta * pxPerYear
-    const size = Math.min(natural, EMPTY_CAP)
+    // 自适应密度间距：
+    // - 稀疏（自然长度过大）→ 压缩为 EMPTY_CAP 短段；
+    // - 密集（自然长度过小）→ 拉开到 DENSE_MIN，保证卡片不重叠；
+    // - 中间地带按真实年份比例展开。
+    const size = natural > EMPTY_CAP ? EMPTY_CAP : Math.max(natural, DENSE_MIN)
     const y0 = cursor
     cursor += size
-    gaps.push({ from: prev, to: year, y0, y1: cursor, compressed: natural > EMPTY_CAP })
+    gaps.push({
+      from: prev,
+      to: year,
+      y0,
+      y1: cursor,
+      compressed: natural > EMPTY_CAP,
+      stretched: natural < DENSE_MIN,
+    })
     marks.push({ year, y: cursor })
   })
 
@@ -175,12 +190,18 @@ export function parallelEvents(
     .sort((a, b) => Math.abs(a.year - target.year) - Math.abs(b.year - target.year))
 }
 
-/** 三次贝塞尔曲线路径（节点锚点 -> 面板边缘锚点） */
+/**
+ * 三次贝塞尔曲线路径（节点锚点 -> 面板边缘锚点）
+ * 弯曲幅度随两端距离自适应：距离越远弧线越舒展；
+ * 两端纵向接近时主动拱起，避免直线贴着/穿过卡片造成遮挡。
+ */
 export function curvePath(x1: number, y1: number, x2: number, y2: number): string {
-  const dx = Math.max(60, Math.abs(x2 - x1) * 0.5)
-  return `M ${x1} ${y1} C ${x1 + (x2 > x1 ? dx : -dx)} ${y1}, ${
-    x2 + (x2 > x1 ? -dx : dx)
-  } ${y2}, ${x2} ${y2}`
+  const dir = x2 > x1 ? 1 : -1
+  const dx = Math.min(280, Math.max(90, Math.abs(x2 - x1) * 0.55))
+  const dy = Math.abs(y2 - y1) < 40 ? 46 : 0
+  return `M ${x1} ${y1} C ${x1 + dir * dx} ${y1 - dy}, ${x2 - dir * dx} ${
+    y2 - dy
+  }, ${x2} ${y2}`
 }
 
 /** 兼容类型引用（Tick 仍用于事件年份刻度渲染） */

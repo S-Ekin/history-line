@@ -21,7 +21,8 @@ const scale = computed(() => createScale(store.filteredItems, store.pxPerYear))
  * 事件节点侧端点：主轴上的节点圆点（世界轴节点）
  */
 const nodeAnchor = computed(() => ({
-  x: store.centerX,
+  // 内容坐标减去横向滚动量，得到节点圆点的视口坐标
+  x: store.centerX - store.scrollLeftX,
   y: item.value ? scale.value.yearToY(item.value.year) - store.scrollTop + 32 : 0,
 }))
 

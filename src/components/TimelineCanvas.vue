@@ -7,6 +7,7 @@ import {
   formatRange,
   layoutNodes,
   visibleNodes,
+  CARD_W,
 } from '@/utils/timeline'
 
 const store = useTimelineStore()
@@ -41,13 +42,30 @@ const gaps = computed(() =>
 )
 
 const contentH = computed(() => scale.value.totalH)
-const centerX = computed(() => viewportW.value / 2)
+
+/** 内容所需的单侧宽度（容纳最远泳道卡片），不足视口时以视口为准 */
+const halfSpan = computed(() => {
+  let maxExtent = 0
+  for (const n of allNodes.value) {
+    const extent = n.item.type === 'world' ? n.x + CARD_W : -n.x
+    if (extent > maxExtent) maxExtent = extent
+  }
+  return Math.max(viewportW.value / 2, maxExtent + 48)
+})
+const contentW = computed(() => halfSpan.value * 2)
+/** 主轴位于内容横向中心 */
+const centerX = computed(() => halfSpan.value)
+
+function centerHorizontally() {
+  if (scrollEl.value)
+    scrollEl.value.scrollLeft = (contentW.value - viewportW.value) / 2
+}
 
 function syncViewport() {
   raf = 0
   if (!scrollEl.value) return
   top.value = scrollEl.value.scrollTop
-  store.setViewport(top.value, centerX.value)
+  store.setViewport(top.value, centerX.value, scrollEl.value.scrollLeft)
 }
 
 function onScroll() {
@@ -58,6 +76,7 @@ function onScroll() {
 function onResize() {
   viewportH.value = window.innerHeight
   viewportW.value = window.innerWidth
+  centerHorizontally()
   syncViewport()
 }
 
@@ -96,6 +115,7 @@ onMounted(() => {
   // 初始定位到文明早期（公元前 3500 年附近）
   setTimeout(() => {
     if (scrollEl.value) {
+      centerHorizontally()
       scrollEl.value.scrollTop = scale.value.yearToY(-3500) - viewportH.value / 3
       syncViewport()
     }
@@ -111,12 +131,12 @@ onBeforeUnmount(() => {
 <template>
   <div
     ref="scrollEl"
-    class="tl-scroll absolute inset-0 top-56px overflow-y-auto overflow-x-hidden"
+    class="tl-scroll absolute inset-0 top-56px overflow-auto"
     @scroll="onScroll"
     @wheel="onWheel"
   >
-    <!-- 虚拟滚动占位：撑开完整时间轴高度 -->
-    <div class="relative w-full" :style="{ height: `${contentH}px` }">
+    <!-- 虚拟滚动占位：撑开完整时间轴高度（横向超出时可横向滚动） -->
+    <div class="relative" :style="{ height: `${contentH}px`, width: `${contentW}px` }">
       <!-- 主时间轴线（加粗） -->
       <div
         class="absolute top-0 bottom-0 w-6px rounded-full bg-gradient-to-b from-transparent via-bronze-deep to-transparent"

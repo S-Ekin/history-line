@@ -17,11 +17,13 @@ export const useTimelineStore = defineStore('timeline', () => {
   const keyword = ref('')
   /** 时间轴视口状态（由滚动容器同步，供详情面板绘制连接线） */
   const scrollTop = ref(0)
+  const scrollLeftX = ref(0)
   const centerX = ref(0)
 
-  function setViewport(top: number, cx: number) {
+  function setViewport(top: number, cx: number, left = 0) {
     scrollTop.value = top
     centerX.value = cx
+    scrollLeftX.value = left
   }
 
   /** 按显示模式过滤后的全部数据 */
@@ -80,6 +82,7 @@ export const useTimelineStore = defineStore('timeline', () => {
     panelPos,
     keyword,
     scrollTop,
+    scrollLeftX,
     centerX,
     filteredItems,
     searchResults,
