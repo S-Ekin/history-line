@@ -179,7 +179,7 @@ export function visibleNodes(
   return nodes.filter((n) => n.y + CARD_H >= y0 - buffer && n.y <= y1 + buffer)
 }
 
-/** 同期对照：获取与目标年份相差 within 年内的其他分集 */
+/** 同期对照：获取与目标年份相差 within 年内的其他分集，按时间升序 */
 export function parallelEvents(
   items: HistoryItem[],
   target: HistoryItem,
@@ -187,7 +187,7 @@ export function parallelEvents(
 ): HistoryItem[] {
   return items
     .filter((i) => i.id !== target.id && Math.abs(i.year - target.year) <= within)
-    .sort((a, b) => Math.abs(a.year - target.year) - Math.abs(b.year - target.year))
+    .sort((a, b) => a.year - b.year)
 }
 
 /**
