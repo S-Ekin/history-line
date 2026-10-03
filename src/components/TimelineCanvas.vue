@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useTimelineStore } from '@/stores/timeline'
 import TimelineNode from './TimelineNode.vue'
 import { allHistory } from '@/data'
@@ -9,6 +9,8 @@ import {
   visibleNodes,
   CARD_W,
   axisGradient,
+  ERA_COLORS,
+  eraOf,
 } from '@/utils/timeline'
 
 const store = useTimelineStore()
@@ -70,6 +72,18 @@ function centerHorizontally() {
   if (scrollEl.value)
     scrollEl.value.scrollLeft = (contentW.value - viewportW.value) / 2
 }
+
+/** 内容宽度或视口宽度变化后自动重新居中，保证主轴稳定在视口水平中心 */
+watch(
+  contentW,
+  () => {
+    nextTick(centerHorizontally)
+    // 重试两次，规避布局/滚动尚未就绪的时序问题
+    setTimeout(centerHorizontally, 60)
+    setTimeout(centerHorizontally, 200)
+  },
+  { immediate: true },
+)
 
 function syncViewport() {
   raf = 0
@@ -171,17 +185,21 @@ onBeforeUnmount(() => {
         :style="axisStyle"
       />
 
-      <!-- 事件年份刻度文案（节点圆点本身作为刻度点，这里只标年份） -->
+      <!-- 事件年份刻度文案：年代色 + 纸底，浮于连线之上（z-4），不被遮挡 -->
       <template v-for="mark in marks" :key="mark.year">
         <div
-          class="absolute whitespace-nowrap text-11px leading-12px text-ink-light select-none"
-          :style="{ top: `${mark.y - 6}px`, left: `${centerX + 14}px` }"
+          class="absolute z-4 whitespace-nowrap text-11px leading-12px select-none bg-paper rounded px-4px"
+          :style="{
+            top: `${mark.y - 7}px`,
+            left: `${centerX + 12}px`,
+            color: ERA_COLORS[eraOf(mark.year)],
+          }"
         >
           {{ mark.year < 0 ? `公元前${-mark.year}` : mark.year === 0 ? `公元元年` : `公元${mark.year}` }}
         </div>
       </template>
 
-      <!-- 空白压缩区间：轴上的断裂锯齿记号（仅占轴宽，不遮挡刻度文案） -->
+      <!-- 空白压缩区间：轴内断裂锯齿 + 左侧小灰字「略 N 年」 -->
       <template v-for="g in gaps" :key="`gap-${g.from}-${g.to}`">
         <svg
           class="absolute z-1 pointer-events-none"
@@ -189,7 +207,6 @@ onBeforeUnmount(() => {
           width="8"
           :height="g.y1 - g.y0"
         >
-          <!-- 纸色锯齿，表示时间轴在此被压缩省略 -->
           <path
             :d="compressSaw(g.y1 - g.y0)"
             fill="none"
@@ -198,6 +215,15 @@ onBeforeUnmount(() => {
             stroke-linecap="round"
           />
         </svg>
+        <div
+          class="absolute z-1 whitespace-nowrap text-9px leading-none text-ink-light/70 select-none bg-paper/90 rounded px-3px"
+          :style="{
+            top: `${(g.y0 + g.y1) / 2 - 5}px`,
+            left: `${centerX - 48}px`,
+          }"
+        >
+          略 {{ g.to - g.from }} 年
+        </div>
       </template>
 
       <!-- 公元元年纪元分界标记 -->

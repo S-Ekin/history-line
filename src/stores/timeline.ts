@@ -68,18 +68,23 @@ export const useTimelineStore = defineStore('timeline', () => {
       // 时间轴主轴位于视口水平中心：节点在轴的哪一侧，面板就放到对侧半屏，
       // 避免遮挡节点所在一侧的内容。
       // 中国线节点在左 → 面板落在右半屏；世界线节点在右 → 面板落在左半屏。
-      // 以主轴「实际视口横坐标」为基准，把面板放到轴的对侧，
-      // 避免遮挡节点所在一侧的卡片；空间不足时贴屏幕边缘。
+      // 面板定位：
+      // - 宽屏（viewportW ≥ 1500，含 1500–2000）：直接贴屏幕最边；
+      // - 其余：面板离主轴至少 300px；放不下时退化为贴边。
       const axisViewportX = centerX.value - scrollLeftX.value
-      const axisClear = 24
+      const MIN_AXIS_GAP = 300
       let x: number
       if (item.type === 'china') {
-        // 中国线节点在轴左侧 → 面板置于轴右侧，尽量贴右边缘
-        x = axisViewportX + axisClear
+        // 中国线节点在轴左 → 面板在右
+        x = viewportW >= 1500
+          ? viewportW - PANEL_W - margin
+          : axisViewportX + MIN_AXIS_GAP
         if (x + PANEL_W > viewportW - margin) x = viewportW - PANEL_W - margin
       } else {
-        // 世界线节点在轴右侧 → 面板置于轴左侧，尽量贴左边缘
-        x = axisViewportX - axisClear - PANEL_W
+        // 世界线节点在轴右 → 面板在左
+        x = viewportW >= 1500
+          ? margin
+          : axisViewportX - MIN_AXIS_GAP - PANEL_W
         if (x < margin) x = margin
       }
       panelPos.value = { x: Math.round(x), y: 140 }

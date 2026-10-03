@@ -121,11 +121,13 @@ export function createScale(items: HistoryItem[], pxPerYear: number): ScaleModel
 
   const marks: YearMark[] = []
   const gaps: Gap[] = []
-  let cursor = 0
+  /** 内容顶部留白：保证首个事件卡片（以刻度为中心、半高 CARD_H/2）完整显示 */
+  const TOP_PAD = 90
+  let cursor = TOP_PAD
 
   years.forEach((year, idx) => {
     if (idx === 0) {
-      marks.push({ year, y: 0 })
+      marks.push({ year, y: TOP_PAD })
       return
     }
     const prev = years[idx - 1]

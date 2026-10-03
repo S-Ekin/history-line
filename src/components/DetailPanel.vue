@@ -8,7 +8,8 @@ import {
   formatYear,
   parallelEvents,
   parallelSpanByDensity,
-  NODE_COLOR,
+  ERA_COLORS,
+  eraOf,
 } from '@/utils/timeline'
 
 const store = useTimelineStore()
@@ -18,6 +19,11 @@ const PANEL_W = 386
 const SCROLL_OFFSET_TOP = 56
 
 const item = computed(() => store.selected)
+
+/** 选中事件所属年代的系列色 */
+const eraColor = computed(() =>
+  item.value ? ERA_COLORS[eraOf(item.value.year)] : '#3a3128',
+)
 
 /** 与画布一致的比例尺（始终基于全量数据） */
 const scale = computed(() => createScale(allHistory, store.pxPerYear))
@@ -106,7 +112,7 @@ function onPointerUp(e: PointerEvent) {
       <path
         :d="path"
         fill="none"
-        :stroke="NODE_COLOR"
+        :stroke="eraColor"
         stroke-width="2.5"
         stroke-dasharray="6 4"
       />
@@ -115,7 +121,7 @@ function onPointerUp(e: PointerEvent) {
         :cx="nodeAnchor.x"
         :cy="nodeAnchor.y"
         r="5"
-        :fill="NODE_COLOR"
+        :fill="eraColor"
         stroke="#f5efe2"
         stroke-width="2"
       />
@@ -127,7 +133,7 @@ function onPointerUp(e: PointerEvent) {
         :cx="panelAnchor.x"
         :cy="panelAnchor.y"
         r="5.5"
-        :fill="NODE_COLOR"
+        :fill="eraColor"
         stroke="#f5efe2"
         stroke-width="2"
       />
@@ -135,8 +141,12 @@ function onPointerUp(e: PointerEvent) {
 
     <!-- 可拖动详情面板 -->
     <section
-      class="panel-in panel-shadow fixed z-50 w-386px max-w-[92vw] max-h-[78vh] flex flex-col bg-paper border border-bronze/50 rounded-lg overflow-hidden"
-      :style="{ left: `${store.panelPos.x}px`, top: `${store.panelPos.y}px` }"
+      class="panel-in panel-shadow fixed z-50 w-386px max-w-[92vw] max-h-[78vh] flex flex-col bg-paper border rounded-lg overflow-hidden"
+      :style="{
+        left: `${store.panelPos.x}px`,
+        top: `${store.panelPos.y}px`,
+        borderColor: eraColor,
+      }"
     >
       <header
         class="flex items-center gap-8px px-14px h-52px bg-paper-deep border-b border-bronze/30 cursor-grab active:cursor-grabbing select-none"
@@ -146,7 +156,7 @@ function onPointerUp(e: PointerEvent) {
       >
         <span
           class="text-11px px-6px py-2px rounded text-paper"
-          style="background: #3a3128"
+          :style="{ background: eraColor }"
         >
           {{ item.type === 'china' ? `中国 · 第${item.episode}集` : `世界 · 第${item.episode}集` }}
         </span>
@@ -171,7 +181,8 @@ function onPointerUp(e: PointerEvent) {
           <li
             v-for="(ev, idx) in item.keyEvents"
             :key="idx"
-            class="border-l-[3px] border-bronze/60 pl-10px py-2px"
+            class="border-l-[3px] pl-10px py-2px"
+            :style="{ borderColor: eraColor }"
           >
             <div class="text-13px font-bold text-ink">{{ ev.eventName }}</div>
             <div class="text-11px text-bronze-deep mt-1px">人物：{{ ev.figures }}</div>

@@ -100,10 +100,9 @@ body {
   }
 }
 
-/* 激活节点卡片：轻微放大 + 金色渐变描边光晕 */
+/* 激活节点卡片：轻微放大 + 金色光晕（边框保留所属年代色） */
 .node-card-active {
   transform: scale(1.06);
-  border-color: #c2a06a;
   box-shadow:
     0 0 0 1px rgba(194, 160, 106, 0.45),
     0 12px 28px rgba(156, 107, 60, 0.35);
