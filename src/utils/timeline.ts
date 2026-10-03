@@ -9,8 +9,8 @@ export const CARD_W = 218
 export const CARD_H = 64
 export const CARD_GAP_X = 14
 export const CARD_GAP_Y = 12
-/** 节点与主轴之间的水平间隙（轴线到卡片锚点） */
-export const AXIS_GAP = 50
+/** 节点与主轴之间的水平间隙（轴线到卡片锚点）：需容纳轴侧年份刻度文案，避免卡片遮挡 */
+export const AXIS_GAP = 96
 
 /** 没有任何事件的空白区间，在轴上占用的最大像素长度（压缩显示） */
 export const EMPTY_CAP = 64
@@ -29,6 +29,58 @@ export function shortYear(year: number): string {
   if (year < 0) return `前${-year}`
   if (year === 0) return '前1'
   return `${year}`
+}
+
+/* ===== 年代分段（实色，不用透明度）===== */
+
+/** 年代类型：公元前 / 古代 / 近代 */
+export type Era = 'bc' | 'ancient' | 'modern'
+
+/**
+ * 三段年代分界年份：
+ * - 公元前：year < 1
+ * - 古代：1 ≤ year < 1500（公元纪元至地理大发现前夜）
+ * - 近代：year ≥ 1500（地理大发现 / 工业文明以降）
+ */
+export const ERA_BOUNDARY = { ancient: 1, modern: 1500 }
+
+/**
+ * 三段年代颜色（与宣纸暖底协调、彼此显著区分）：
+ * - 公元前：古铜赭
+ * - 古代：朱砂绛红
+ * - 近代：黛青墨绿
+ */
+export const ERA_COLORS: Record<Era, string> = {
+  bc: '#9c6b3c',
+  ancient: '#b3402f',
+  modern: '#3f6b52',
+}
+
+/** 节点统一颜色（不区分中外）：墨色圆点，在三段色轴上均显著 */
+export const NODE_COLOR = '#3a3128'
+
+/** 根据年份判定所属年代段 */
+export function eraOf(year: number): Era {
+  if (year < ERA_BOUNDARY.ancient) return 'bc'
+  if (year < ERA_BOUNDARY.modern) return 'ancient'
+  return 'modern'
+}
+
+/**
+ * 构造主轴纵向三段渐变（含段间过渡带）。
+ * yAncient / yModern 为两个分界年份在内容中的纵向像素坐标；blend 为过渡带半高。
+ */
+export function axisGradient(yAncient: number, yModern: number, blend = 42): string {
+  const c = ERA_COLORS
+  return [
+    'linear-gradient(to bottom',
+    `${c.bc} 0px`,
+    `${c.bc} ${Math.max(0, yAncient - blend)}px`,
+    `${c.ancient} ${yAncient + blend}px`,
+    `${c.ancient} ${Math.max(yAncient + blend, yModern - blend)}px`,
+    `${c.modern} ${yModern + blend}px`,
+    `${c.modern} 100%)`,
+  ].join(',')
 }
 
 /** 空白压缩区间 */

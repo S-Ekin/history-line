@@ -8,6 +8,7 @@ import {
   formatYear,
   parallelEvents,
   parallelSpanByDensity,
+  NODE_COLOR,
 } from '@/utils/timeline'
 
 const store = useTimelineStore()
@@ -28,9 +29,9 @@ const scale = computed(() => createScale(allHistory, store.pxPerYear))
 const nodeAnchor = computed(() => ({
   // 内容坐标减去横向滚动量，得到主轴的视口 x
   x: store.centerX - store.scrollLeftX,
-  // 内容 y - 纵向滚动 + 滚动容器 top 偏移 + dot 中心（dot top=node.y+25, h-14px, 中心=+32）
+  // 内容 y - 纵向滚动 + 滚动容器 top 偏移（圆点中心即刻度 node.y）
   y: item.value
-    ? scale.value.yearToY(item.value.year) - store.scrollTop + SCROLL_OFFSET_TOP + 32
+    ? scale.value.yearToY(item.value.year) - store.scrollTop + SCROLL_OFFSET_TOP
     : 0,
 }))
 
@@ -105,17 +106,16 @@ function onPointerUp(e: PointerEvent) {
       <path
         :d="path"
         fill="none"
-        :stroke="item.type === 'china' ? '#b3402f' : '#4a6b52'"
+        :stroke="NODE_COLOR"
         stroke-width="2.5"
         stroke-dasharray="6 4"
-        opacity="0.8"
       />
       <!-- 节点侧端点 -->
       <circle
         :cx="nodeAnchor.x"
         :cy="nodeAnchor.y"
         r="5"
-        :fill="item.type === 'china' ? '#b3402f' : '#4a6b52'"
+        :fill="NODE_COLOR"
         stroke="#f5efe2"
         stroke-width="2"
       />
@@ -127,7 +127,7 @@ function onPointerUp(e: PointerEvent) {
         :cx="panelAnchor.x"
         :cy="panelAnchor.y"
         r="5.5"
-        :fill="item.type === 'china' ? '#b3402f' : '#4a6b52'"
+        :fill="NODE_COLOR"
         stroke="#f5efe2"
         stroke-width="2"
       />
@@ -146,7 +146,7 @@ function onPointerUp(e: PointerEvent) {
       >
         <span
           class="text-11px px-6px py-2px rounded text-paper"
-          :class="item.type === 'china' ? 'bg-china' : 'bg-world'"
+          style="background: #3a3128"
         >
           {{ item.type === 'china' ? `中国 · 第${item.episode}集` : `世界 · 第${item.episode}集` }}
         </span>
@@ -171,8 +171,7 @@ function onPointerUp(e: PointerEvent) {
           <li
             v-for="(ev, idx) in item.keyEvents"
             :key="idx"
-            class="border-l-[3px] pl-10px py-2px"
-            :class="item.type === 'china' ? 'border-china/60' : 'border-world/60'"
+            class="border-l-[3px] border-bronze/60 pl-10px py-2px"
           >
             <div class="text-13px font-bold text-ink">{{ ev.eventName }}</div>
             <div class="text-11px text-bronze-deep mt-1px">人物：{{ ev.figures }}</div>

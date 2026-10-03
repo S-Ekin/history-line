@@ -2,43 +2,40 @@
 import { computed } from 'vue'
 import type { LaidOutNode } from '@/types/history'
 import { useTimelineStore } from '@/stores/timeline'
+import { CARD_H, NODE_COLOR } from '@/utils/timeline'
 
 const props = defineProps<{
   node: LaidOutNode
   centerX: number
-  /** 节点透明度（随年份渐变） */
-  opacity: number
 }>()
 
 const store = useTimelineStore()
 
 const isActive = computed(() => store.selected?.id === props.node.item.id)
 
-/** 选中态时提升透明度下限，保证金色高亮清晰可见 */
-const effectiveOpacity = computed(() =>
-  isActive.value ? Math.max(props.opacity, 0.85) : props.opacity,
-)
-
+/** 卡片：以刻度 node.y 为垂直中心，保证卡片准确对应轴上刻度 */
 const style = computed(() => ({
-  top: `${props.node.y}px`,
+  top: `${props.node.y - CARD_H / 2}px`,
   left: `${props.centerX + props.node.x}px`,
   width: '218px',
-  opacity: effectiveOpacity.value,
 }))
 
-/** 节点到主轴的连接线 */
+/** 节点到主轴的连接线（水平，垂直对齐刻度） */
 const stubStyle = computed(() => {
   const isChina = props.node.item.type === 'china'
   return {
-    top: `${props.node.y + 31}px`,
+    top: `${props.node.y - 1}px`,
+    background: NODE_COLOR,
     left: isChina ? `${props.centerX + props.node.x + 218}px` : `${props.centerX}px`,
     width: isChina ? `${-(props.node.x) - 218}px` : `${props.node.x}px`,
   }
 })
 
+/** 轴上节点圆点（中心对齐刻度 node.y） */
 const dotStyle = computed(() => ({
-  top: `${props.node.y + 25}px`,
+  top: `${props.node.y - 7}px`,
   left: `${props.centerX - 7}px`,
+  background: NODE_COLOR,
 }))
 
 function onClick() {
@@ -47,34 +44,27 @@ function onClick() {
 </script>
 
 <template>
-  <!-- 横向连接短线 -->
-  <div
-    class="absolute h-2px pointer-events-none"
-    :class="node.item.type === 'china' ? 'bg-china/40' : 'bg-world/40'"
-    :style="{ ...stubStyle, opacity: effectiveOpacity }"
-  />
-  <!-- 主轴上的节点圆点 -->
+  <!-- 横向连接短线（统一墨色，不区分中外） -->
+  <div class="absolute h-2px pointer-events-none" :style="stubStyle" />
+  <!-- 主轴上的节点圆点（统一墨色） -->
   <div
     class="absolute z-2 h-14px w-14px rounded-full border-2 border-paper pointer-events-auto cursor-pointer transition-transform duration-150 hover:scale-130"
-    :class="[node.item.type === 'china' ? 'bg-china' : 'bg-world', isActive ? 'node-dot-active' : '']"
-    :style="{ ...dotStyle, opacity: effectiveOpacity }"
+    :class="[isActive ? 'node-dot-active' : '']"
+    :style="dotStyle"
     @click.stop="onClick"
   />
-  <!-- 分集卡片（内容文字保持不透明） -->
+  <!-- 分集卡片 -->
   <button
     type="button"
     class="card-base node-in absolute z-3 h-64px px-10px py-6px text-left cursor-pointer hover:-translate-y-2px hover:border-bronze hover:shadow-md"
-    :class="[
-      node.item.type === 'china' ? 'hover:border-china' : 'hover:border-world',
-      isActive ? 'node-card-active' : '',
-    ]"
+    :class="[isActive ? 'node-card-active' : '']"
     :style="style"
     @click.stop="onClick"
   >
     <div class="flex items-center gap-6px">
       <span
         class="shrink-0 text-10px px-4px py-1px rounded text-paper"
-        :class="node.item.type === 'china' ? 'bg-china' : 'bg-world'"
+        style="background: #3a3128"
       >
         {{ node.item.type === 'china' ? '中' : '世' }}{{ node.item.episode }}
       </span>

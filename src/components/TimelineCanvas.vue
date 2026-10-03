@@ -5,12 +5,10 @@ import TimelineNode from './TimelineNode.vue'
 import { allHistory } from '@/data'
 import {
   createScale,
-  formatRange,
   layoutNodes,
   visibleNodes,
   CARD_W,
-  yearProgress,
-  nodeOpacity,
+  axisGradient,
 } from '@/utils/timeline'
 
 const store = useTimelineStore()
@@ -46,17 +44,14 @@ const gaps = computed(() =>
 
 const contentH = computed(() => scale.value.totalH)
 
-/** 当前过滤后的年份范围（用于颜色渐变） */
-const yearRange = computed(() => {
-  const years = store.filteredItems.map((i) => i.year)
-  return { min: Math.min(...years), max: Math.max(...years) }
-})
-
-/** 计算节点透明度（越早越淡，最小 0.55） */
-function computeOpacity(year: number): number {
-  const { min, max } = yearRange.value
-  return nodeOpacity(yearProgress(year, min, max))
-}
+/** 主轴纵向三段年代渐变（公元前古铜 / 古代绛红 / 近代黛绿，段间过渡） */
+const axisStyle = computed(() => ({
+  left: `${centerX.value - 3}px`,
+  background: axisGradient(
+    scale.value.yearToY(1),
+    scale.value.yearToY(1500),
+  ),
+}))
 
 /** 内容所需的单侧宽度（容纳最远泳道卡片），不足视口时以视口为准 */
 const halfSpan = computed(() => {
@@ -91,6 +86,18 @@ function onScroll() {
 /** 点击时间轴空白区域（节点点击已 stopPropagation）时关闭详情面板 */
 function onBackgroundClick() {
   if (store.selected) store.select(null)
+}
+
+/** 压缩区间的锯齿路径（在宽 8 的窄区域内左右往复），提示时间被压缩省略 */
+function compressSaw(h: number): string {
+  const teeth = Math.max(2, Math.round(h / 12))
+  const step = h / teeth
+  let d = ''
+  for (let i = 0; i <= teeth; i++) {
+    const x = i % 2 === 0 ? 1 : 7
+    d += `${i === 0 ? 'M' : 'L'} ${x} ${(i * step).toFixed(1)} `
+  }
+  return d
 }
 
 function onResize() {
@@ -158,19 +165,14 @@ onBeforeUnmount(() => {
   >
     <!-- 虚拟滚动占位：撑开完整时间轴高度（横向超出时可横向滚动） -->
     <div class="relative" :style="{ height: `${contentH}px`, width: `${contentW}px` }">
-      <!-- 主时间轴线（加粗） -->
+      <!-- 主时间轴线：三段年代实色，段间渐变过渡 -->
       <div
-        class="absolute top-0 bottom-0 w-6px rounded-full bg-gradient-to-b from-transparent via-bronze-deep to-transparent"
-        :style="{ left: `${centerX - 3}px` }"
+        class="absolute top-0 bottom-0 w-6px rounded-full"
+        :style="axisStyle"
       />
 
-      <!-- 事件年份刻度 -->
+      <!-- 事件年份刻度文案（节点圆点本身作为刻度点，这里只标年份） -->
       <template v-for="mark in marks" :key="mark.year">
-        <div
-          class="absolute h-12px w-12px rounded-full bg-gold border-2 border-bronze-deep"
-          :style="{ top: `${mark.y - 4}px`, left: `${centerX - 6}px` }"
-        />
-        <!-- 右侧刻度：单一数据源，避免左右标签混淆 -->
         <div
           class="absolute whitespace-nowrap text-11px leading-12px text-ink-light select-none"
           :style="{ top: `${mark.y - 6}px`, left: `${centerX + 14}px` }"
@@ -179,18 +181,23 @@ onBeforeUnmount(() => {
         </div>
       </template>
 
-      <!-- 空白压缩区间：一小段 + 区间文案 -->
+      <!-- 空白压缩区间：轴上的断裂锯齿记号（仅占轴宽，不遮挡刻度文案） -->
       <template v-for="g in gaps" :key="`gap-${g.from}-${g.to}`">
-        <div
-          class="absolute z-1 flex items-center justify-center"
-          :style="{ top: `${g.y0}px`, height: `${g.y1 - g.y0}px`, left: `${centerX - 95}px`, width: '190px' }"
+        <svg
+          class="absolute z-1 pointer-events-none"
+          :style="{ top: `${g.y0}px`, height: `${g.y1 - g.y0}px`, left: `${centerX - 4}px` }"
+          width="8"
+          :height="g.y1 - g.y0"
         >
-          <span
-            class="block whitespace-nowrap text-9px leading-none text-center text-bronze-deep bg-paper/95 border border-bronze/40 rounded px-8px py-4px"
-          >
-            {{ formatRange(g.from, g.to) }}
-          </span>
-        </div>
+          <!-- 纸色锯齿，表示时间轴在此被压缩省略 -->
+          <path
+            :d="compressSaw(g.y1 - g.y0)"
+            fill="none"
+            stroke="#f5efe2"
+            stroke-width="1.6"
+            stroke-linecap="round"
+          />
+        </svg>
       </template>
 
       <!-- 公元元年纪元分界标记 -->
@@ -212,7 +219,6 @@ onBeforeUnmount(() => {
         :key="node.item.id"
         :node="node"
         :center-x="centerX"
-        :opacity="computeOpacity(node.item.year)"
       />
     </div>
   </div>
