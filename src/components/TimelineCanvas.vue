@@ -99,7 +99,57 @@ function onScroll() {
 
 /** 点击时间轴空白区域（节点点击已 stopPropagation）时关闭详情面板 */
 function onBackgroundClick() {
+  // 若刚结束一次拖拽平移，则不视为点击，避免误关闭
+  if (panMoved > 5) return
   if (store.selected) store.select(null)
+}
+
+/* ===== 空白处按住拖拽平移（grab to pan） ===== */
+let panning = false
+/** 本次拖拽累计移动量，用于区分「点击」与「拖拽」 */
+let panMoved = 0
+let panStartX = 0
+let panStartY = 0
+let panStartLeft = 0
+let panStartTop = 0
+
+function onPointerDown(e: PointerEvent) {
+  // 按在节点/按钮上时不启动拖拽，保证节点点击正常
+  if ((e.target as HTMLElement).closest('button')) return
+  if (e.button !== 0) return
+  const el = scrollEl.value
+  if (!el) return
+  panning = true
+  panMoved = 0
+  panStartX = e.clientX
+  panStartY = e.clientY
+  panStartLeft = el.scrollLeft
+  panStartTop = el.scrollTop
+  el.setPointerCapture(e.pointerId)
+  el.style.cursor = 'grabbing'
+}
+
+function onPanMove(e: PointerEvent) {
+  const el = scrollEl.value
+  if (!panning || !el) return
+  const dx = e.clientX - panStartX
+  const dy = e.clientY - panStartY
+  panMoved = Math.max(panMoved, Math.abs(dx) + Math.abs(dy))
+  // 内容随手势方向移动（横向 + 纵向）
+  el.scrollLeft = panStartLeft - dx
+  el.scrollTop = panStartTop - dy
+}
+
+function onPanEnd(e: PointerEvent) {
+  const el = scrollEl.value
+  if (!panning || !el) return
+  panning = false
+  el.releasePointerCapture(e.pointerId)
+  el.style.cursor = ''
+  // 短暂保留移动量，供随后的 click 判断，随后清零
+  setTimeout(() => {
+    panMoved = 0
+  }, 0)
 }
 
 /** 压缩区间的锯齿路径（在宽 8 的窄区域内左右往复），提示时间被压缩省略 */
@@ -172,10 +222,14 @@ onBeforeUnmount(() => {
 <template>
   <div
     ref="scrollEl"
-    class="tl-scroll absolute inset-0 top-56px overflow-auto"
+    class="tl-scroll absolute inset-0 top-56px overflow-auto cursor-grab active:cursor-grabbing"
     @scroll="onScroll"
     @wheel="onWheel"
     @click="onBackgroundClick"
+    @pointerdown="onPointerDown"
+    @pointermove="onPanMove"
+    @pointerup="onPanEnd"
+    @pointercancel="onPanEnd"
   >
     <!-- 虚拟滚动占位：撑开完整时间轴高度（横向超出时可横向滚动） -->
     <div class="relative" :style="{ height: `${contentH}px`, width: `${contentW}px` }">
