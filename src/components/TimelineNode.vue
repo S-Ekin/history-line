@@ -56,9 +56,9 @@ function onClick() {
   <!-- 主轴上的节点圆点 -->
   <div
     class="absolute z-2 h-14px w-14px rounded-full border-2 border-paper pointer-events-auto cursor-pointer transition-transform duration-150 hover:scale-130"
-    :class="[node.item.type === 'china' ? 'bg-china' : 'bg-world', isActive ? 'scale-140 ring-2 ring-gold' : '']"
+    :class="[node.item.type === 'china' ? 'bg-china' : 'bg-world', isActive ? 'node-dot-active' : '']"
     :style="{ ...dotStyle, opacity: effectiveOpacity }"
-    @click="onClick"
+    @click.stop="onClick"
   />
   <!-- 分集卡片（内容文字保持不透明） -->
   <button
@@ -66,10 +66,10 @@ function onClick() {
     class="card-base node-in absolute z-3 h-64px px-10px py-6px text-left cursor-pointer hover:-translate-y-2px hover:border-bronze hover:shadow-md"
     :class="[
       node.item.type === 'china' ? 'hover:border-china' : 'hover:border-world',
-      isActive ? 'border-gold shadow-md' : '',
+      isActive ? 'node-card-active' : '',
     ]"
     :style="style"
-    @click="onClick"
+    @click.stop="onClick"
   >
     <div class="flex items-center gap-6px">
       <span

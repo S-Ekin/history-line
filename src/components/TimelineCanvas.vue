@@ -88,6 +88,11 @@ function onScroll() {
   raf = requestAnimationFrame(syncViewport)
 }
 
+/** 点击时间轴空白区域（节点点击已 stopPropagation）时关闭详情面板 */
+function onBackgroundClick() {
+  if (store.selected) store.select(null)
+}
+
 function onResize() {
   viewportH.value = window.innerHeight
   viewportW.value = window.innerWidth
@@ -149,6 +154,7 @@ onBeforeUnmount(() => {
     class="tl-scroll absolute inset-0 top-56px overflow-auto"
     @scroll="onScroll"
     @wheel="onWheel"
+    @click="onBackgroundClick"
   >
     <!-- 虚拟滚动占位：撑开完整时间轴高度（横向超出时可横向滚动） -->
     <div class="relative" :style="{ height: `${contentH}px`, width: `${contentW}px` }">

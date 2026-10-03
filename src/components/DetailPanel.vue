@@ -7,7 +7,7 @@ import {
   curvePath,
   formatYear,
   parallelEvents,
-  parallelSpan,
+  parallelSpanByDensity,
 } from '@/utils/timeline'
 
 const store = useTimelineStore()
@@ -50,8 +50,10 @@ const path = computed(() =>
   curvePath(nodeAnchor.value.x, nodeAnchor.value.y, panelAnchor.value.x, panelAnchor.value.y),
 )
 
-/** 当前选中事件的同期对照跨度（动态计算） */
-const currentSpan = computed(() => (item.value ? parallelSpan(item.value.year) : 50))
+/** 当前选中事件的同期对照跨度（按事件密度动态计算，上限 1500 年） */
+const currentSpan = computed(() =>
+  item.value ? parallelSpanByDensity(store.filteredItems, item.value) : 5,
+)
 
 const parallels = computed(() =>
   item.value ? parallelEvents(store.filteredItems, item.value, currentSpan.value) : [],

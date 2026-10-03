@@ -62,12 +62,22 @@ export const useTimelineStore = defineStore('timeline', () => {
   function select(item: HistoryItem | null, viewportW = window.innerWidth) {
     selected.value = item
     if (item) {
-      // 默认面板出现在与节点相反的一侧，避免遮挡
-      const fromLeft = item.type === 'china'
-      panelPos.value = {
-        x: fromLeft ? Math.round(viewportW * 0.42) : Math.round(viewportW * 0.08),
-        y: 160,
-      }
+      // 详情面板宽度（与 DetailPanel 的 w-386px 保持一致）
+      const PANEL_W = 386
+      const margin = 20
+      // 时间轴主轴位于视口水平中心：节点在轴的哪一侧，面板就放到对侧半屏，
+      // 避免遮挡节点所在一侧的内容。
+      // 中国线节点在左 → 面板落在右半屏；世界线节点在右 → 面板落在左半屏。
+      const isLeftSideNode = item.type === 'china'
+      const preferred = isLeftSideNode
+        ? viewportW / 2 + 40
+        : viewportW / 2 - PANEL_W - 40
+      // 兜底：保证面板整体留在视口内（窄屏时退化为贴边显示）
+      const x = Math.min(
+        viewportW - PANEL_W - margin,
+        Math.max(margin, preferred),
+      )
+      panelPos.value = { x: Math.round(x), y: 160 }
     }
   }
 

@@ -191,15 +191,30 @@ export function parallelEvents(
 }
 
 /**
- * 根据年份动态计算同期对照跨度
- * 指数衰减公式：以 1900 年 5 年为基准，每往前 500 年跨度 ×2
- * 远古事件稀少 → 跨度几百年；近代事件密集 → 跨度 5 年
- * 最小 5 年，最大 5000 年（防止极端远古 span 过大）
+ * 根据「事件密度」动态计算同期对照跨度（半径，单位年）：
+ *
+ * 取距离目标事件最近的若干个其他事件（默认 3 个），以第 3 近事件的年份
+ * 距离作为跨度——这样前后 ±跨度 的窗口内恰好能容纳约 3 个同期事件。
+ * - 事件密集区（相邻事件年份接近）→ 跨度很小；
+ * - 事件稀疏区（事件间隔大）→ 跨度随之放大，但硬上限 1500 年；
+ * - minSpan 兜底，避免极端密集时窗口窄到几乎为 0；
+ * - 数据不足 3 个时，退化为 maxSpan。
  */
-export function parallelSpan(year: number): number {
-  const yearsBefore1900 = Math.max(0, 1900 - year)
-  const span = 5 * Math.pow(2, yearsBefore1900 / 500)
-  return Math.round(Math.min(5000, Math.max(5, span)))
+export function parallelSpanByDensity(
+  items: HistoryItem[],
+  target: HistoryItem,
+  densityCount = 3,
+  minSpan = 5,
+  maxSpan = 1500,
+): number {
+  const distances = items
+    .filter((i) => i.id !== target.id)
+    .map((i) => Math.abs(i.year - target.year))
+    .sort((a, b) => a - b)
+
+  const anchor = distances[densityCount - 1]
+  if (anchor === undefined) return maxSpan
+  return Math.round(Math.min(maxSpan, Math.max(minSpan, anchor)))
 }
 
 /**
