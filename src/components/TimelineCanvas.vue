@@ -226,6 +226,7 @@ onBeforeUnmount(() => {
     @scroll="onScroll"
     @wheel="onWheel"
     @click="onBackgroundClick"
+    @dblclick="centerHorizontally"
     @pointerdown="onPointerDown"
     @pointermove="onPanMove"
     @pointerup="onPanEnd"
