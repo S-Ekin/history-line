@@ -77,6 +77,26 @@ function pick(id: string) {
   if (next) store.select(next)
 }
 
+/** 五段式描述标签顺序 */
+const DESC_LABELS = ['【背景】', '【起因】', '【发展】', '【结果】', '【影响】']
+
+/**
+ * 把「【背景】…【起因】…」格式的描述拆分为五段，便于分段展示；
+ * 兼容不含标签的旧描述（整体作为一段）。
+ */
+function descSegments(desc: string): { label: string; text: string }[] {
+  const re = /(【背景】|【起因】|【发展】|【结果】|【影响】)/g
+  const parts = desc.split(re).filter(Boolean)
+  const segs: { label: string; text: string }[] = []
+  for (let i = 0; i < parts.length; i++) {
+    if (DESC_LABELS.includes(parts[i]) && parts[i + 1] !== undefined) {
+      segs.push({ label: parts[i].slice(1, -1), text: parts[i + 1] })
+      i++
+    }
+  }
+  return segs.length ? segs : [{ label: '', text: desc }]
+}
+
 /* 面板拖动 */
 let dragging = false
 let offsetX = 0
@@ -186,7 +206,13 @@ function onPointerUp(e: PointerEvent) {
           >
             <div class="text-13px font-bold text-ink">{{ ev.eventName }}</div>
             <div class="text-11px text-bronze-deep mt-1px">人物：{{ ev.figures }}</div>
-            <p class="text-12px text-ink-light mt-2px leading-relaxed">{{ ev.desc }}</p>
+            <div class="text-12px text-ink-light mt-3px leading-relaxed space-y-2px">
+              <p v-for="(s, i) in descSegments(ev.desc)" :key="i">
+                <span v-if="s.label" class="font-bold" :style="{ color: eraColor }">{{ s.label }}</span>
+                <template v-if="s.label">　</template>
+                {{ s.text }}
+              </p>
+            </div>
           </li>
         </ul>
 
