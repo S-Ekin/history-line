@@ -127,8 +127,8 @@ function onPointerUp(e: PointerEvent) {
 
 <template>
   <template v-if="item">
-    <!-- 曲线连接层（位于面板之下） -->
-    <svg class="fixed inset-0 z-40 w-full h-full pointer-events-none">
+    <!-- 曲线连接层（位于面板之上，保证不被模态框遮挡） -->
+    <svg class="fixed inset-0 z-[65] w-full h-full pointer-events-none">
       <path
         :d="path"
         fill="none"
@@ -147,8 +147,8 @@ function onPointerUp(e: PointerEvent) {
       />
     </svg>
 
-    <!-- 面板侧端点：层级高于面板，保证完整显示 -->
-    <svg class="fixed inset-0 z-[60] w-full h-full pointer-events-none">
+    <!-- 面板侧端点：层级高于曲线与面板，保证完整显示 -->
+    <svg class="fixed inset-0 z-[70] w-full h-full pointer-events-none">
       <circle
         :cx="panelAnchor.x"
         :cy="panelAnchor.y"
