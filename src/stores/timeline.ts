@@ -62,8 +62,8 @@ export const useTimelineStore = defineStore('timeline', () => {
   function select(item: HistoryItem | null, viewportW = window.innerWidth) {
     selected.value = item
     if (item) {
-      // 详情面板宽度（与 DetailPanel 的 w-386px 保持一致）
-      const PANEL_W = 386
+      // 详情面板宽度（与 DetailPanel 的 w-470px 保持一致）
+      const PANEL_W = 470
       const margin = 20
       // 时间轴主轴位于视口水平中心：节点在轴的哪一侧，面板就放到对侧半屏，
       // 避免遮挡节点所在一侧的内容。
