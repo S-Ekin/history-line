@@ -102,6 +102,8 @@ body {
 
 /* 激活节点卡片：轻微放大 + 金色光晕（边框保留所属年代色） */
 .node-card-active {
+  position: relative;
+  overflow: visible;
   transform: scale(1.06);
   box-shadow:
     0 0 0 1px rgba(194, 160, 106, 0.45),
@@ -109,4 +111,42 @@ body {
 }
 .node-card-active:hover {
   transform: scale(1.06);
+}
+
+/* 边框光线跑动动画：用 @property 驱动 conic-gradient 角度缓慢旋转 */
+@property --node-border-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+/* 伪元素：沿卡片边框流动的一段金白色光带（慢速，3.5 秒一圈） */
+.node-card-active::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 5px;
+  padding: 2px;
+  background: conic-gradient(
+    from var(--node-border-angle),
+    transparent 0deg,
+    transparent 250deg,
+    rgba(255, 214, 140, 0.15) 295deg,
+    rgba(255, 238, 190, 0.9) 335deg,
+    rgba(255, 250, 230, 1) 348deg,
+    transparent 360deg
+  );
+  /* 双层 mask 只保留边框环带，透出中间内容 */
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  animation: node-border-run 3.5s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes node-border-run {
+  to {
+    --node-border-angle: 360deg;
+  }
 }
