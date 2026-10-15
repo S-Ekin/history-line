@@ -61,7 +61,11 @@ function onClick() {
   <button
     type="button"
     class="card-base node-in absolute z-3 h-64px px-10px py-6px text-left cursor-pointer hover:-translate-y-2px hover:shadow-md"
-    :class="[isActive ? 'node-card-active' : '']"
+    :class="[
+      isActive
+        ? `node-card-active node-card-${node.item.type === 'china' ? 'left' : 'right'}`
+        : '',
+    ]"
     :style="style"
     @click.stop="onClick"
   >
