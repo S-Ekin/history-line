@@ -120,7 +120,7 @@ body {
   inherits: false;
 }
 
-/* 伪元素：沿卡片边框流动的一段金白色光带（慢速，3.5 秒一圈） */
+/* 伪元素：沿卡片边框流动的一段金白色光带（缓慢自然，6 秒一圈） */
 .node-card-active::before {
   content: '';
   position: absolute;
@@ -130,10 +130,12 @@ body {
   background: conic-gradient(
     from var(--node-border-angle),
     transparent 0deg,
-    transparent 250deg,
-    rgba(255, 214, 140, 0.15) 295deg,
-    rgba(255, 238, 190, 0.9) 335deg,
-    rgba(255, 250, 230, 1) 348deg,
+    transparent 220deg,
+    rgba(255, 214, 140, 0.12) 270deg,
+    rgba(255, 232, 178, 0.55) 315deg,
+    rgba(255, 244, 208, 0.95) 340deg,
+    rgba(255, 232, 178, 0.55) 352deg,
+    rgba(255, 214, 140, 0.12) 358deg,
     transparent 360deg
   );
   /* 双层 mask 只保留边框环带，透出中间内容 */
@@ -141,7 +143,7 @@ body {
   -webkit-mask-composite: xor;
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask-composite: exclude;
-  animation: node-border-run 3.5s linear infinite;
+  animation: node-border-run 6s linear infinite;
   pointer-events: none;
 }
 
