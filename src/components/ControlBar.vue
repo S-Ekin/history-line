@@ -70,7 +70,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
     </div>
 
     <!-- 年份搜索 -->
-    <div ref="searchBox" class="relative w-250px shrink-0">
+    <div ref="searchBox" class="relative w-180px shrink-0">
       <input
         v-model="store.keyword"
         type="text"
