@@ -14,7 +14,7 @@ import {
 
 const store = useTimelineStore()
 
-const PANEL_W = 386
+const PANEL_W = 470
 /** 滚动容器距离视口顶部的偏移（对应 TimelineCanvas 的 top-56px） */
 const SCROLL_OFFSET_TOP = 56
 
@@ -161,7 +161,7 @@ function onPointerUp(e: PointerEvent) {
 
     <!-- 可拖动详情面板 -->
     <section
-      class="panel-in panel-shadow fixed z-50 w-386px max-w-[92vw] max-h-[78vh] flex flex-col bg-paper border rounded-lg overflow-hidden"
+      class="panel-in panel-shadow fixed z-50 w-470px max-w-[94vw] max-h-[86vh] flex flex-col bg-paper border-2 rounded-xl overflow-hidden"
       :style="{
         left: `${store.panelPos.x}px`,
         top: `${store.panelPos.y}px`,
@@ -169,21 +169,21 @@ function onPointerUp(e: PointerEvent) {
       }"
     >
       <header
-        class="flex items-center gap-8px px-14px h-52px bg-paper-deep border-b border-bronze/30 cursor-grab active:cursor-grabbing select-none"
+        class="flex items-center gap-8px px-13px h-46px bg-paper-deep border-b border-bronze/30 cursor-grab active:cursor-grabbing select-none"
         @pointerdown="onPointerDown"
         @pointermove="onPointerMove"
         @pointerup="onPointerUp"
       >
         <span
-          class="text-11px px-6px py-2px rounded text-paper"
+          class="text-10px px-6px py-2px rounded text-paper shrink-0"
           :style="{ background: eraColor }"
         >
           {{ item.type === 'china' ? `中国 · 第${item.episode}集` : `世界 · 第${item.episode}集` }}
         </span>
-        <h2 class="flex-1 text-16px font-bold text-ink truncate">{{ item.title }}</h2>
+        <h2 class="flex-1 text-15px font-bold text-ink truncate">{{ item.title }}</h2>
         <button
           type="button"
-          class="text-ink-light hover:text-china text-18px leading-none px-4px"
+          class="text-ink-light hover:text-china text-18px leading-none px-4px shrink-0"
           title="关闭"
           @click="close"
         >
@@ -191,35 +191,41 @@ function onPointerUp(e: PointerEvent) {
         </button>
       </header>
 
-      <div class="overflow-y-auto tl-scroll px-14px py-12px">
-        <div class="text-12px text-bronze-deep mb-10px">
-          {{ formatYear(item.year) }}
+      <div class="overflow-y-auto tl-scroll px-13px py-10px">
+        <!-- 年份分隔条 -->
+        <div class="flex items-center gap-8px mb-8px">
+          <span class="text-11px font-bold text-bronze-deep whitespace-nowrap">{{ formatYear(item.year) }}</span>
+          <span class="flex-1 h-1px bg-bronze/25" />
         </div>
 
-        <h3 class="text-13px font-bold text-ink mb-6px">关键事件 · 核心人物</h3>
-        <ul class="space-y-8px mb-14px">
+        <h3 class="section-title text-12px font-bold text-ink mb-5px">关键事件 · 核心人物</h3>
+        <ul class="space-y-7px mb-11px">
           <li
             v-for="(ev, idx) in item.keyEvents"
             :key="idx"
-            class="border-l-[3px] pl-10px py-2px"
+            class="border-l-[3px] pl-9px py-1px"
             :style="{ borderColor: eraColor }"
           >
-            <div class="text-13px font-bold text-ink">{{ ev.eventName }}</div>
-            <div class="text-11px text-bronze-deep mt-1px">人物：{{ ev.figures }}</div>
-            <div class="text-12px text-ink-light mt-3px leading-relaxed space-y-2px">
+            <div class="text-13px font-bold text-ink leading-tight">{{ ev.eventName }}</div>
+            <div class="text-11px text-bronze-deep mt-1px">
+              <span class="font-bold">核心人物</span> {{ ev.figures }}
+            </div>
+            <div class="text-12px text-ink-light mt-3px leading-[1.5] space-y-1px text-justify">
               <p v-for="(s, i) in descSegments(ev.desc)" :key="i">
-                <span v-if="s.label" class="font-bold" :style="{ color: eraColor }">{{ s.label }}</span>
-                <template v-if="s.label">　</template>
-                {{ s.text }}
+                <span
+                  v-if="s.label"
+                  class="inline-block min-w-28px text-center text-[10px] font-bold leading-14px px-3px mr-5px rounded-sm align-1px"
+                  :style="{ background: `${eraColor}1f`, color: eraColor }"
+                >{{ s.label }}</span><template v-if="!s.label">　</template>{{ s.text }}
               </p>
             </div>
           </li>
         </ul>
 
-        <h3 class="text-13px font-bold text-ink mb-6px">
-          同期对照 <span class="text-11px font-normal text-ink-light">（前后 {{ currentSpan }} 年中外并行事件）</span>
+        <h3 class="section-title text-12px font-bold text-ink mb-5px">
+          同期对照 <span class="text-10px font-normal text-ink-light">（前后 {{ currentSpan }} 年中外并行事件）</span>
         </h3>
-        <div class="grid grid-cols-2 gap-8px">
+        <div class="grid grid-cols-2 gap-6px">
           <div>
             <div class="text-11px text-china font-bold mb-4px">中国历史</div>
             <p v-if="!chinaParallels.length" class="text-11px text-ink-light/70">暂无同期分集</p>
@@ -228,7 +234,7 @@ function onPointerUp(e: PointerEvent) {
               v-else
               :key="p.id"
               type="button"
-              class="block w-full text-left text-11px px-6px py-4px mb-4px rounded border border-china/30 hover:bg-china/10 text-ink truncate"
+              class="block w-full text-left text-11px px-6px py-3px mb-3px rounded border border-china/30 hover:bg-china/10 text-ink truncate"
               @click="pick(p.id)"
             >
               {{ p.year < 0 ? `前${-p.year}` : p.year }} · {{ p.title }}
@@ -242,7 +248,7 @@ function onPointerUp(e: PointerEvent) {
               v-else
               :key="p.id"
               type="button"
-              class="block w-full text-left text-11px px-6px py-4px mb-4px rounded border border-world/30 hover:bg-world/10 text-ink truncate"
+              class="block w-full text-left text-11px px-6px py-3px mb-3px rounded border border-world/30 hover:bg-world/10 text-ink truncate"
               @click="pick(p.id)"
             >
               {{ p.year < 0 ? `前${-p.year}` : p.year }} · {{ p.title }}
@@ -253,3 +259,17 @@ function onPointerUp(e: PointerEvent) {
     </section>
   </template>
 </template>
+
+<style scoped>
+/* 小标题前的竖线装饰 */
+.section-title::before {
+  content: '';
+  display: inline-block;
+  width: 3px;
+  height: 11px;
+  margin-right: 5px;
+  background: currentColor;
+  border-radius: 1px;
+  vertical-align: -1px;
+}
+</style>
